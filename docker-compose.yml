@@ -1,0 +1,53 @@
+version: '3.0'
+services:
+
+   nginx-app:
+       build:
+         context: ./nginx
+       image: edersonh/nginx-app
+       container_name: nginx-app
+       networks:
+          - nginx-node-net
+       ports:
+           - "80:80"
+       tty: true
+       depends_on:
+         - node-server
+
+   node-server:
+       build:
+         context: ./node
+       image: edersonh/node-app
+       container_name: node-server
+       entrypoint: wait-for db-mysql:3306 -t 45 -- ./start.sh
+       networks:
+          - nginx-node-net
+       ports:
+           - 3000:3000
+       volumes:
+         - ./node:/usr/src/app
+       depends_on:
+         - db-mysql
+
+   db-mysql:
+       build:
+         context: ./mysql
+       image: edersonh/db-mysql
+       command: --innodb-use-native-aio=0
+       container_name: db-mysql
+       restart: always
+       expose:
+         - "3306"
+       ports:
+         - "3306:3306"
+       tty: true
+       environment:
+         - MYSQL_DATABASE=nodedb
+         - MYSQL_ROOT_PASSWORD=root
+       networks:
+          - nginx-node-net
+
+networks:
+  nginx-node-net:
+    driver: bridge
+    name: nginx-node-net
